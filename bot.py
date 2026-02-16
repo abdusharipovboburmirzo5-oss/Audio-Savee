@@ -1230,19 +1230,22 @@ async def post_init(application: Application):
 
 def main():
     """Start the bot"""
-    # Network readiness check (enhanced for DNS/IP debugging)
-    import socket
-    import time
-    import requests
-    
-    logger.info("📡 Checking network readiness...")
-    network_ready = False
-    
     # --- GLOBAL DNS RUNTIME PATCH ---
     import socket
     import dns.resolver
     
     original_getaddrinfo = socket.getaddrinfo
+    original_gethostbyname = socket.gethostbyname
+
+    def custom_resolve(host):
+        try:
+            resolver = dns.resolver.Resolver()
+            resolver.nameservers = ['8.8.8.8', '8.8.4.4']
+            answers = resolver.resolve(host, 'A')
+            return str(answers[0])
+        except Exception as e:
+            logger.error(f"❌ Custom DNS also failed for {host}: {e}")
+            return None
 
     def patched_getaddrinfo(*args, **kwargs):
         host = args[0]
@@ -1250,33 +1253,42 @@ def main():
             return original_getaddrinfo(*args, **kwargs)
         except socket.gaierror:
             if host == 'api.telegram.org':
-                logger.info(f"⚡ System DNS failed for {host}. Trying custom fallback...")
-                try:
-                    resolver = dns.resolver.Resolver()
-                    resolver.nameservers = ['8.8.8.8', '8.8.4.4']
-                    answers = resolver.resolve(host, 'A')
-                    ip = str(answers[0])
-                    # Return correctly formatted addrinfo
+                logger.info(f"⚡ System DNS (getaddrinfo) failed for {host}. Trying custom fallback...")
+                ip = custom_resolve(host)
+                if ip:
                     return original_getaddrinfo(ip, *args[1:], **kwargs)
-                except Exception as e:
-                    logger.error(f"❌ Custom DNS also failed for {host}: {e}")
+            raise
+
+    def patched_gethostbyname(host):
+        try:
+            return original_gethostbyname(host)
+        except socket.gaierror:
+            if host == 'api.telegram.org':
+                logger.info(f"⚡ System DNS (gethostbyname) failed for {host}. Trying custom fallback...")
+                ip = custom_resolve(host)
+                if ip: return ip
             raise
 
     socket.getaddrinfo = patched_getaddrinfo
+    socket.gethostbyname = patched_gethostbyname
     # --- END PATCH ---
+
+    # Token diagnostics (moved here to ensure logging is ready)
+    if not Config.BOT_TOKEN:
+        logger.error("❌ BOT_TOKEN is EMPTY! Check Hugging Face Secrets.")
+    else:
+        logger.info(f"✅ BOT_TOKEN detected: {Config.BOT_TOKEN[:5]}...{Config.BOT_TOKEN[-5:]} (Length: {len(Config.BOT_TOKEN)})")
 
     logger.info("📡 Checking network readiness...")
     network_ready = False
-
     for i in range(30): # Wait up to 150 seconds
         try:
-            # 1. Test IP connectivity (Google DNS)
+            # Test connectivity
             socket.create_connection(("8.8.8.8", 53), timeout=3)
             ip_ok = True
         except:
             ip_ok = False
 
-        # 2. Test DNS resolution
         try:
             socket.gethostbyname('api.telegram.org')
             dns_ok = True
