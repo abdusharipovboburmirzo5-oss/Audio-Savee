@@ -1237,16 +1237,16 @@ def main():
     import time
     
     logger.info("📡 Checking network readiness (waiting for DNS)...")
-    for i in range(12): # Wait up to 60 seconds
+    for i in range(30): # Wait up to 150 seconds
         try:
             socket.gethostbyname('api.telegram.org')
             logger.info("✅ Network is ready!")
             break
         except Exception as e:
-            if i == 11:
-                logger.error(f"❌ Network remains unavailable: {e}")
+            if i == 29:
+                logger.error(f"❌ Network remains unavailable after 150s: {e}")
             else:
-                logger.warning(f"⏳ Network not ready yet (Attempt {i+1}/12)...")
+                logger.warning(f"⏳ Network not ready yet (Attempt {i+1}/30)...")
                 time.sleep(5)
 
     application = Application.builder().token(Config.BOT_TOKEN).connect_timeout(120).read_timeout(120).write_timeout(120).pool_timeout(120).post_init(post_init).build()
