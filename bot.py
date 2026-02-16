@@ -34,31 +34,32 @@ try:
                 return "149.154.167.220"
             return None
 
-    def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-        try:
-            return _orig_getaddrinfo(host, port, family, type, proto, flags)
-        except socket.gaierror:
-            if host == 'api.telegram.org':
-                ip = custom_resolve(host)
-                if ip:
-                    logger.info(f"✨ DNS (addrinfo) redirected {host} -> {ip}")
-                    return _orig_getaddrinfo(ip, port, socket.AF_INET, type, proto, flags)
-            raise
+    def patched_getaddrinfo(*args, **kwargs):
+        host = args[0] if args else kwargs.get('host')
+        if host == 'api.telegram.org':
+            ip = custom_resolve(host)
+            if ip:
+                # Force IPv4 and use our IP
+                new_args = list(args)
+                if len(new_args) > 0: new_args[0] = ip
+                if len(new_args) > 2: new_args[2] = socket.AF_INET
+                # Remove host from kwargs if present to avoid conflict
+                kwargs.pop('host', None)
+                logger.info(f"✨ DNS (addrinfo) proactive redirect: {host} -> {ip}")
+                return _orig_getaddrinfo(*new_args, **kwargs)
+        return _orig_getaddrinfo(*args, **kwargs)
 
     def patched_gethostbyname(host):
-        try:
-            return _orig_gethostbyname(host)
-        except socket.gaierror:
-            if host == 'api.telegram.org':
-                ip = custom_resolve(host)
-                if ip:
-                    logger.info(f"✨ DNS (hostbyname) redirected {host} -> {ip}")
-                    return ip
-            raise
+        if host == 'api.telegram.org':
+            ip = custom_resolve(host)
+            if ip:
+                logger.info(f"✨ DNS (hostbyname) proactive redirect: {host} -> {ip}")
+                return ip
+        return _orig_gethostbyname(host)
 
     socket.getaddrinfo = patched_getaddrinfo
     socket.gethostbyname = patched_gethostbyname
-    logger.info("🚀 Universal DNS Monkeypatch Active.")
+    logger.info("🚀 Universal DNS Monkeypatch Active (Proactive).")
 except Exception as e:
     logger.error(f"⚠️ DNS Patch failed: {e}")
 # --- END PATCH ---
