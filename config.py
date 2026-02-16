@@ -17,10 +17,11 @@ class Config:
     import logging
     logger = logging.getLogger(__name__)
     if not BOT_TOKEN:
-        logger.error("❌ BOT_TOKEN is EMPTY! Check Hugging Face Secrets.")
+        logger.error("❌ BOT_TOKEN is EMPTY! Check Hugging Face Secrets (Settings -> Variables and secrets).")
     else:
         # Show first 5 and last 5 chars for verification
-        logger.info(f"✅ BOT_TOKEN detected: {BOT_TOKEN[:5]}...{BOT_TOKEN[-5:]} (Length: {len(BOT_TOKEN)})")
+        source = "System Environment" if 'BOT_TOKEN' in os.environ else ".env file"
+        logger.info(f"✅ BOT_TOKEN detected from {source}: {BOT_TOKEN[:5]}...{BOT_TOKEN[-5:]} (Length: {len(BOT_TOKEN)})")
 
     ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', '')
     REQUIRED_CHANNEL = "@Abdusharipovuz"
