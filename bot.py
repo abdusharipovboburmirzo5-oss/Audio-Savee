@@ -1238,16 +1238,35 @@ def main():
     logger.info("📡 Checking network readiness...")
     network_ready = False
     
-    # Custom DNS helper
-    def resolve_dns_custom(hostname):
+    # --- GLOBAL DNS RUNTIME PATCH ---
+    import socket
+    import dns.resolver
+    
+    original_getaddrinfo = socket.getaddrinfo
+
+    def patched_getaddrinfo(*args, **kwargs):
+        host = args[0]
         try:
-            import dns.resolver
-            resolver = dns.resolver.Resolver()
-            resolver.nameservers = ['8.8.8.8', '8.8.4.4']
-            answers = resolver.resolve(hostname, 'A')
-            return str(answers[0])
-        except Exception:
-            return None
+            return original_getaddrinfo(*args, **kwargs)
+        except socket.gaierror:
+            if host == 'api.telegram.org':
+                logger.info(f"⚡ System DNS failed for {host}. Trying custom fallback...")
+                try:
+                    resolver = dns.resolver.Resolver()
+                    resolver.nameservers = ['8.8.8.8', '8.8.4.4']
+                    answers = resolver.resolve(host, 'A')
+                    ip = str(answers[0])
+                    # Return correctly formatted addrinfo
+                    return original_getaddrinfo(ip, *args[1:], **kwargs)
+                except Exception as e:
+                    logger.error(f"❌ Custom DNS also failed for {host}: {e}")
+            raise
+
+    socket.getaddrinfo = patched_getaddrinfo
+    # --- END PATCH ---
+
+    logger.info("📡 Checking network readiness...")
+    network_ready = False
 
     for i in range(30): # Wait up to 150 seconds
         try:
@@ -1257,18 +1276,12 @@ def main():
         except:
             ip_ok = False
 
-        # 2. Test DNS resolution (System)
+        # 2. Test DNS resolution
         try:
             socket.gethostbyname('api.telegram.org')
             dns_ok = True
         except:
-            # Try custom DNS resolution if system fails
-            custom_ip = resolve_dns_custom('api.telegram.org')
-            if custom_ip:
-                logger.info(f"⚡ System DNS failed, but custom DNS resolved to {custom_ip}!")
-                dns_ok = True
-            else:
-                dns_ok = False
+            dns_ok = False
 
         if dns_ok:
             logger.info("✅ Network is fully ready!")
