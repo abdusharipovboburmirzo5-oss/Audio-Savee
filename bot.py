@@ -15,51 +15,52 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# --- UNIVERSAL DNS MONKEYPATCH (Bypasses all Cloud DNS issues) ---
+# --- UNIVERSAL DNS MONKEYPATCH (Zero-System-DNS for Telegram) ---
 try:
     import dns.resolver
     _orig_getaddrinfo = socket.getaddrinfo
     _orig_gethostbyname = socket.gethostbyname
 
     def custom_resolve(host):
-        # 1. Try Google DNS
+        # 1. Try Google DNS (Manual query)
         try:
             resolver = dns.resolver.Resolver()
             resolver.nameservers = ['8.8.8.8', '8.8.4.4']
             answers = resolver.resolve(host, 'A')
             return str(answers[0])
         except:
-            # 2. Hardcoded fallback for Telegram API (Last resort)
-            if host == 'api.telegram.org':
+            # 2. Hardcoded fallback for Telegram API
+            if 'telegram.org' in host:
                 return "149.154.167.220"
             return None
 
     def patched_getaddrinfo(*args, **kwargs):
-        host = args[0] if args else kwargs.get('host')
-        if host == 'api.telegram.org':
-            ip = custom_resolve(host)
-            if ip:
-                # Force IPv4 and use our IP
-                new_args = list(args)
-                if len(new_args) > 0: new_args[0] = ip
-                if len(new_args) > 2: new_args[2] = socket.AF_INET
-                # Remove host from kwargs if present to avoid conflict
-                kwargs.pop('host', None)
-                logger.info(f"✨ DNS (addrinfo) proactive redirect: {host} -> {ip}")
-                return _orig_getaddrinfo(*new_args, **kwargs)
+        try:
+            host = args[0] if args else kwargs.get('host')
+            port = args[1] if len(args) > 1 else kwargs.get('port', 443)
+            
+            if host and isinstance(host, str) and 'telegram.org' in host:
+                ip = custom_resolve(host)
+                if ip:
+                    logger.info(f"🎯 Zero-DNS Redirect: {host} -> {ip}:{port}")
+                    # Return hardcoded AF_INET (IPv4) TCP STREAM addrinfo
+                    return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, port))]
+        except Exception as e:
+            logger.error(f"⚠️ Monkeypatch error: {e}")
+            
         return _orig_getaddrinfo(*args, **kwargs)
 
     def patched_gethostbyname(host):
-        if host == 'api.telegram.org':
+        if host and isinstance(host, str) and 'telegram.org' in host:
             ip = custom_resolve(host)
             if ip:
-                logger.info(f"✨ DNS (hostbyname) proactive redirect: {host} -> {ip}")
+                logger.info(f"🎯 Zero-DNS (hostbyname) Redirect: {host} -> {ip}")
                 return ip
         return _orig_gethostbyname(host)
 
     socket.getaddrinfo = patched_getaddrinfo
     socket.gethostbyname = patched_gethostbyname
-    logger.info("🚀 Universal DNS Monkeypatch Active (Proactive).")
+    logger.info("🚀 Universal Zero-System-DNS Patch Active.")
 except Exception as e:
     logger.error(f"⚠️ DNS Patch failed: {e}")
 # --- END PATCH ---
