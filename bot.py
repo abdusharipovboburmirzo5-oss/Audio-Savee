@@ -4,66 +4,37 @@ Main bot application
 """
 import socket
 import sys
-import threading
+import _socket
 
-# --- NUCLEAR ZERO-SYSTEM-DNS PATCH (Recursion-Safe) ---
+# --- INFINITE-SAFE STATIC DNS PATCH (Absolute Top) ---
+# Hardcoded Telegram IPs to bypass ALL cloud DNS issues
 try:
-    import dns.resolver
-    import _socket
-    
-    # Capture the raw C-level implementation to avoid recursion
     _real_getaddrinfo = _socket.getaddrinfo
     _real_gethostbyname = socket.gethostbyname
-    
-    _tls = threading.local()
-
-    def custom_resolve(host):
-        try:
-            resolver = dns.resolver.Resolver()
-            resolver.nameservers = ['8.8.8.8', '8.8.4.4']
-            answers = resolver.resolve(host, 'A')
-            return str(answers[0])
-        except:
-            if 'telegram.org' in host:
-                return "149.154.167.220"
-            return None
 
     def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-        # Recursion guard
-        if getattr(_tls, 'busy', False):
-            return _real_getaddrinfo(host, port, family, type, proto, flags)
-            
-        try:
-            _tls.busy = True
-            if host and isinstance(host, str) and 'telegram.org' in host:
-                ip = custom_resolve(host)
-                if ip:
-                    try: p = int(port)
-                    except: p = 443
-                    print(f"🎯 NUCLEAR DNS REDIRECT: {host} -> {ip}:{p}")
-                    return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, p))]
-        finally:
-            _tls.busy = False
-            
+        if host and isinstance(host, str) and 'telegram.org' in host:
+            # Verified stable IP for api.telegram.org (DC4)
+            ip = "149.154.167.220"
+            try: p = int(port)
+            except: p = 443
+            print(f"✅ STATIC DNS REDIRECT: {host} -> {ip}:{p}")
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, p))]
         return _real_getaddrinfo(host, port, family, type, proto, flags)
 
     def patched_gethostbyname(host):
         if host and isinstance(host, str) and 'telegram.org' in host:
-            ip = custom_resolve(host)
-            if ip:
-                print(f"🎯 NUCLEAR DNS (hostbyname) REDIRECT: {host} -> {ip}")
-                return ip
+            return "149.154.167.220"
         return _real_gethostbyname(host)
 
-    # Apply to both modules to ensure no library bypasses us
+    # Apply to both modules immediately
     _socket.getaddrinfo = patched_getaddrinfo
     socket.getaddrinfo = patched_getaddrinfo
     socket.gethostbyname = patched_gethostbyname
-    
-    print("🚀 NUCLEAR Zero-System-DNS Patch Active (Recursion-Safe).")
+    print("🚀 Static DNS Patch Active (Immune to Recursion).")
 except Exception as e:
-    print(f"⚠️ NUCLEAR DNS Patch failed: {e}")
-# --- END NUCLEAR PATCH ---
+    print(f"⚠️ Static DNS Patch failed: {e}")
+# --- END PATCH ---
 
 import logging
 import asyncio
