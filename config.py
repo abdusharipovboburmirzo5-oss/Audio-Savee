@@ -12,6 +12,13 @@ class Config:
     
     # Telegram Bot Settings
     BOT_TOKEN = os.getenv('BOT_TOKEN', '')
+    if not BOT_TOKEN:
+        import logging
+        logging.getLogger(__name__).warning("⚠️ BOT_TOKEN is empty! Check your environment variables or secrets.")
+    elif len(BOT_TOKEN) < 10:
+        import logging
+        logging.getLogger(__name__).warning(f"⚠️ BOT_TOKEN looks too short ({len(BOT_TOKEN)} chars). Check your secret.")
+
     ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', '')
     REQUIRED_CHANNEL = "@Abdusharipovuz"
     CHANNEL_URL = "https://t.me/Abdusharipovuz"
