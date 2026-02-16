@@ -1,3 +1,12 @@
+---
+title: Audio Save Bot
+emoji: 🎵
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # Instagram Downloader Telegram Bot
 
 Professional Instagram content downloader bot similar to @savedinstabot.
