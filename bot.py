@@ -1287,6 +1287,7 @@ def main():
 
     logger.info("📡 Checking network readiness...")
     import time
+    network_ready = False
     for i in range(30): # Wait up to 150 seconds
         ip_ok = False
         dns_ok = False
@@ -1302,6 +1303,7 @@ def main():
 
         if dns_ok:
             logger.info("✅ Network is ready!")
+            network_ready = True
             break
         elif ip_ok:
             logger.warning(f"⏳ IP is ready but DNS failed (Attempt {i+1}/30)...")
