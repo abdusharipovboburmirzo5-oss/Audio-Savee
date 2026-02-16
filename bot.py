@@ -1230,6 +1230,25 @@ async def post_init(application: Application):
 
 def main():
     """Start the bot"""
+    Config.ensure_download_dir()
+    
+    # Simple network ready check for cloud environments
+    import socket
+    import time
+    
+    logger.info("📡 Checking network readiness (waiting for DNS)...")
+    for i in range(12): # Wait up to 60 seconds
+        try:
+            socket.gethostbyname('api.telegram.org')
+            logger.info("✅ Network is ready!")
+            break
+        except Exception as e:
+            if i == 11:
+                logger.error(f"❌ Network remains unavailable: {e}")
+            else:
+                logger.warning(f"⏳ Network not ready yet (Attempt {i+1}/12)...")
+                time.sleep(5)
+
     application = Application.builder().token(Config.BOT_TOKEN).connect_timeout(120).read_timeout(120).write_timeout(120).pool_timeout(120).post_init(post_init).build()
     application.add_error_handler(error_handler)
     application.add_handler(CommandHandler("start", start))
