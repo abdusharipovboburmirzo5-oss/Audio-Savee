@@ -6,6 +6,62 @@ import logging
 import asyncio
 import os
 import sys
+import socket
+
+# Setup logging early for patch visibility
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+# --- UNIVERSAL DNS MONKEYPATCH (Bypasses all Cloud DNS issues) ---
+try:
+    import dns.resolver
+    _orig_getaddrinfo = socket.getaddrinfo
+    _orig_gethostbyname = socket.gethostbyname
+
+    def custom_resolve(host):
+        # 1. Try Google DNS
+        try:
+            resolver = dns.resolver.Resolver()
+            resolver.nameservers = ['8.8.8.8', '8.8.4.4']
+            answers = resolver.resolve(host, 'A')
+            return str(answers[0])
+        except:
+            # 2. Hardcoded fallback for Telegram API (Last resort)
+            if host == 'api.telegram.org':
+                return "149.154.167.220"
+            return None
+
+    def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        try:
+            return _orig_getaddrinfo(host, port, family, type, proto, flags)
+        except socket.gaierror:
+            if host == 'api.telegram.org':
+                ip = custom_resolve(host)
+                if ip:
+                    logger.info(f"✨ DNS (addrinfo) redirected {host} -> {ip}")
+                    return _orig_getaddrinfo(ip, port, socket.AF_INET, type, proto, flags)
+            raise
+
+    def patched_gethostbyname(host):
+        try:
+            return _orig_gethostbyname(host)
+        except socket.gaierror:
+            if host == 'api.telegram.org':
+                ip = custom_resolve(host)
+                if ip:
+                    logger.info(f"✨ DNS (hostbyname) redirected {host} -> {ip}")
+                    return ip
+            raise
+
+    socket.getaddrinfo = patched_getaddrinfo
+    socket.gethostbyname = patched_gethostbyname
+    logger.info("🚀 Universal DNS Monkeypatch Active.")
+except Exception as e:
+    logger.error(f"⚠️ DNS Patch failed: {e}")
+# --- END PATCH ---
 
 # Add local bin to PATH for FFmpeg
 local_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin')
@@ -22,22 +78,6 @@ from telegram.ext import (
     filters,
     ContextTypes,
 )
-
-from config import Config
-from messages import get_message
-from keyboards import Keyboards
-from utils import is_valid_url, get_content_type, cleanup_file, is_file_too_large, clean_song_title, get_file_size
-from downloader import InstagramDownloader
-from audio_extractor import AudioExtractor
-from database import Database
-from audio_features import audio_features
-
-# Setup logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log Errors caused by Updates."""
@@ -1230,74 +1270,29 @@ async def post_init(application: Application):
 
 def main():
     """Start the bot"""
-    # --- GLOBAL DNS RUNTIME PATCH ---
-    import socket
-    import dns.resolver
-    
-    original_getaddrinfo = socket.getaddrinfo
-    original_gethostbyname = socket.gethostbyname
-
-    def custom_resolve(host):
-        try:
-            resolver = dns.resolver.Resolver()
-            resolver.nameservers = ['8.8.8.8', '8.8.4.4']
-            answers = resolver.resolve(host, 'A')
-            return str(answers[0])
-        except Exception as e:
-            logger.error(f"❌ Custom DNS also failed for {host}: {e}")
-            return None
-
-    def patched_getaddrinfo(*args, **kwargs):
-        host = args[0]
-        try:
-            return original_getaddrinfo(*args, **kwargs)
-        except socket.gaierror:
-            if host == 'api.telegram.org':
-                logger.info(f"⚡ System DNS (getaddrinfo) failed for {host}. Trying custom fallback...")
-                ip = custom_resolve(host)
-                if ip:
-                    return original_getaddrinfo(ip, *args[1:], **kwargs)
-            raise
-
-    def patched_gethostbyname(host):
-        try:
-            return original_gethostbyname(host)
-        except socket.gaierror:
-            if host == 'api.telegram.org':
-                logger.info(f"⚡ System DNS (gethostbyname) failed for {host}. Trying custom fallback...")
-                ip = custom_resolve(host)
-                if ip: return ip
-            raise
-
-    socket.getaddrinfo = patched_getaddrinfo
-    socket.gethostbyname = patched_gethostbyname
-    # --- END PATCH ---
-
-    # Token diagnostics (moved here to ensure logging is ready)
+    # Token diagnostics
     if not Config.BOT_TOKEN:
         logger.error("❌ BOT_TOKEN is EMPTY! Check Hugging Face Secrets.")
     else:
         logger.info(f"✅ BOT_TOKEN detected: {Config.BOT_TOKEN[:5]}...{Config.BOT_TOKEN[-5:]} (Length: {len(Config.BOT_TOKEN)})")
 
     logger.info("📡 Checking network readiness...")
-    network_ready = False
+    import time
     for i in range(30): # Wait up to 150 seconds
+        ip_ok = False
+        dns_ok = False
         try:
-            # Test connectivity
             socket.create_connection(("8.8.8.8", 53), timeout=3)
             ip_ok = True
-        except:
-            ip_ok = False
+        except: pass
 
         try:
             socket.gethostbyname('api.telegram.org')
             dns_ok = True
-        except:
-            dns_ok = False
+        except: pass
 
         if dns_ok:
-            logger.info("✅ Network is fully ready!")
-            network_ready = True
+            logger.info("✅ Network is ready!")
             break
         elif ip_ok:
             logger.warning(f"⏳ IP is ready but DNS failed (Attempt {i+1}/30)...")
