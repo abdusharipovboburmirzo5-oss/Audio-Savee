@@ -79,6 +79,15 @@ from telegram.ext import (
     ContextTypes,
 )
 
+from config import Config
+from messages import get_message
+from keyboards import Keyboards
+from utils import is_valid_url, get_content_type, cleanup_file, is_file_too_large, clean_song_title, get_file_size
+from downloader import InstagramDownloader
+from audio_extractor import AudioExtractor
+from database import Database
+from audio_features import audio_features
+
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log Errors caused by Updates."""
     logger.error(f"Update {update} caused error {context.error}", exc_info=context.error)
