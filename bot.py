@@ -2,27 +2,25 @@
 Multi-platform Downloader Telegram Bot
 Main bot application
 """
-import logging
-import asyncio
-import os
-import sys
 import socket
+import sys
 
-# Setup logging early for patch visibility
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
-
-# --- UNIVERSAL DNS MONKEYPATCH (Zero-System-DNS for Telegram) ---
+# --- NUCLEAR ZERO-SYSTEM-DNS PATCH (Absolute Top) ---
+# This must run before ANY other imports to intercept all libraries
 try:
     import dns.resolver
     _orig_getaddrinfo = socket.getaddrinfo
     _orig_gethostbyname = socket.gethostbyname
+    
+    # Try to include _socket for lower-level interception
+    try:
+        import _socket
+        _orig_c_getaddrinfo = _socket.getaddrinfo
+    except ImportError:
+        _socket = None
 
     def custom_resolve(host):
-        # 1. Try Google DNS (Manual query)
+        # 1. Try Google DNS (Direct query)
         try:
             resolver = dns.resolver.Resolver()
             resolver.nameservers = ['8.8.8.8', '8.8.4.4']
@@ -34,36 +32,47 @@ try:
                 return "149.154.167.220"
             return None
 
-    def patched_getaddrinfo(*args, **kwargs):
-        try:
-            host = args[0] if args else kwargs.get('host')
-            port = args[1] if len(args) > 1 else kwargs.get('port', 443)
-            
-            if host and isinstance(host, str) and 'telegram.org' in host:
-                ip = custom_resolve(host)
-                if ip:
-                    logger.info(f"🎯 Zero-DNS Redirect: {host} -> {ip}:{port}")
-                    # Return hardcoded AF_INET (IPv4) TCP STREAM addrinfo
-                    return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, port))]
-        except Exception as e:
-            logger.error(f"⚠️ Monkeypatch error: {e}")
-            
-        return _orig_getaddrinfo(*args, **kwargs)
+    def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        if host and isinstance(host, str) and 'telegram.org' in host:
+            ip = custom_resolve(host)
+            if ip:
+                try: p = int(port)
+                except: p = 443
+                # print for immediate visibility in cloud logs
+                print(f"🎯 NUCLEAR DNS REDIRECT: {host} -> {ip}:{p}")
+                # Return AF_INET (IPv4), SOCK_STREAM (TCP)
+                return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, p))]
+        return _orig_getaddrinfo(host, port, family, type, proto, flags)
 
     def patched_gethostbyname(host):
         if host and isinstance(host, str) and 'telegram.org' in host:
             ip = custom_resolve(host)
             if ip:
-                logger.info(f"🎯 Zero-DNS (hostbyname) Redirect: {host} -> {ip}")
+                print(f"🎯 NUCLEAR DNS (hostbyname) REDIRECT: {host} -> {ip}")
                 return ip
         return _orig_gethostbyname(host)
 
+    # Apply to both socket and _socket
     socket.getaddrinfo = patched_getaddrinfo
     socket.gethostbyname = patched_gethostbyname
-    logger.info("🚀 Universal Zero-System-DNS Patch Active.")
+    if _socket:
+        _socket.getaddrinfo = patched_getaddrinfo
+    
+    print("🚀 NUCLEAR Zero-System-DNS Patch Active.")
 except Exception as e:
-    logger.error(f"⚠️ DNS Patch failed: {e}")
-# --- END PATCH ---
+    print(f"⚠️ NUCLEAR DNS Patch failed: {e}")
+# --- END NUCLEAR PATCH ---
+
+import logging
+import asyncio
+import os
+
+# Setup logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 # Add local bin to PATH for FFmpeg
 local_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin')
