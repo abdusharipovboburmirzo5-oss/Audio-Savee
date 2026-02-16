@@ -8,3 +8,4 @@ aiohttp==3.9.3
 shazamio
 lyricsgenius
 httpx
+dnspython

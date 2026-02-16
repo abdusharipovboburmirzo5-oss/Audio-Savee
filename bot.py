@@ -1237,6 +1237,18 @@ def main():
     
     logger.info("📡 Checking network readiness...")
     network_ready = False
+    
+    # Custom DNS helper
+    def resolve_dns_custom(hostname):
+        try:
+            import dns.resolver
+            resolver = dns.resolver.Resolver()
+            resolver.nameservers = ['8.8.8.8', '8.8.4.4']
+            answers = resolver.resolve(hostname, 'A')
+            return str(answers[0])
+        except Exception:
+            return None
+
     for i in range(30): # Wait up to 150 seconds
         try:
             # 1. Test IP connectivity (Google DNS)
@@ -1245,15 +1257,21 @@ def main():
         except:
             ip_ok = False
 
+        # 2. Test DNS resolution (System)
         try:
-            # 2. Test DNS resolution
             socket.gethostbyname('api.telegram.org')
             dns_ok = True
         except:
-            dns_ok = False
+            # Try custom DNS resolution if system fails
+            custom_ip = resolve_dns_custom('api.telegram.org')
+            if custom_ip:
+                logger.info(f"⚡ System DNS failed, but custom DNS resolved to {custom_ip}!")
+                dns_ok = True
+            else:
+                dns_ok = False
 
         if dns_ok:
-            logger.info("✅ Network is fully ready (DNS resolved)!")
+            logger.info("✅ Network is fully ready!")
             network_ready = True
             break
         elif ip_ok:
