@@ -1230,24 +1230,41 @@ async def post_init(application: Application):
 
 def main():
     """Start the bot"""
-    Config.ensure_download_dir()
-    
-    # Simple network ready check for cloud environments
+    # Network readiness check (enhanced for DNS/IP debugging)
     import socket
     import time
+    import requests
     
-    logger.info("📡 Checking network readiness (waiting for DNS)...")
+    logger.info("📡 Checking network readiness...")
+    network_ready = False
     for i in range(30): # Wait up to 150 seconds
         try:
+            # 1. Test IP connectivity (Google DNS)
+            socket.create_connection(("8.8.8.8", 53), timeout=3)
+            ip_ok = True
+        except:
+            ip_ok = False
+
+        try:
+            # 2. Test DNS resolution
             socket.gethostbyname('api.telegram.org')
-            logger.info("✅ Network is ready!")
+            dns_ok = True
+        except:
+            dns_ok = False
+
+        if dns_ok:
+            logger.info("✅ Network is fully ready (DNS resolved)!")
+            network_ready = True
             break
-        except Exception as e:
-            if i == 29:
-                logger.error(f"❌ Network remains unavailable after 150s: {e}")
-            else:
-                logger.warning(f"⏳ Network not ready yet (Attempt {i+1}/30)...")
-                time.sleep(5)
+        elif ip_ok:
+            logger.warning(f"⏳ IP is ready but DNS failed (Attempt {i+1}/30)...")
+        else:
+            logger.warning(f"⏳ Total network black-out (Attempt {i+1}/30)...")
+        
+        time.sleep(5)
+
+    if not network_ready:
+        logger.error("❌ Failed to establish network connection after 150s. Bot may crash.")
 
     application = Application.builder().token(Config.BOT_TOKEN).connect_timeout(120).read_timeout(120).write_timeout(120).pool_timeout(120).post_init(post_init).build()
     application.add_error_handler(error_handler)
