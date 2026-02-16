@@ -5,39 +5,51 @@ Main bot application
 import socket
 import sys
 import _socket
+import asyncio
+import threading
 
-# --- INFINITE-SAFE STATIC DNS PATCH (Absolute Top) ---
-# Hardcoded Telegram IPs to bypass ALL cloud DNS issues
+# --- HYPER-NUCLEAR STATIC DNS PATCH (Redundant Layers) ---
+def get_static_addrinfo(host, port):
+    # DC4 IP for api.telegram.org
+    ip = "149.154.167.220"
+    try: p = int(port)
+    except: p = 443
+    print(f"🎯 HYPER-DNS REDIRECT: {host} -> {ip}:{p}")
+    return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, p))]
+
+# 1. Base socket patch
+_real_getaddrinfo = _socket.getaddrinfo
+def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    if host and isinstance(host, str) and 'telegram.org' in host:
+        return get_static_addrinfo(host, port)
+    return _real_getaddrinfo(host, port, family, type, proto, flags)
+
+_socket.getaddrinfo = patched_getaddrinfo
+socket.getaddrinfo = patched_getaddrinfo
+
+# 2. Asyncio loop patch (for already initialized loops)
+_real_loop_getaddrinfo = asyncio.BaseEventLoop.getaddrinfo
+async def patched_loop_getaddrinfo(self, host, port, *args, **kwargs):
+    if host and isinstance(host, str) and 'telegram.org' in host:
+        return get_static_addrinfo(host, port)
+    return await _real_loop_getaddrinfo(self, host, port, *args, **kwargs)
+asyncio.BaseEventLoop.getaddrinfo = patched_loop_getaddrinfo
+
+# 3. Anyio patch (Used by httpx/httpcore)
 try:
-    _real_getaddrinfo = _socket.getaddrinfo
-    _real_gethostbyname = socket.gethostbyname
-
-    def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    import anyio._core._sockets as anyio_sockets
+    _real_anyio_getaddrinfo = anyio_sockets.getaddrinfo
+    async def patched_anyio_getaddrinfo(host, port, *args, **kwargs):
         if host and isinstance(host, str) and 'telegram.org' in host:
-            # Verified stable IP for api.telegram.org (DC4)
-            ip = "149.154.167.220"
-            try: p = int(port)
-            except: p = 443
-            print(f"✅ STATIC DNS REDIRECT: {host} -> {ip}:{p}")
-            return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, p))]
-        return _real_getaddrinfo(host, port, family, type, proto, flags)
+            return get_static_addrinfo(host, port)
+        return await _real_anyio_getaddrinfo(host, port, *args, **kwargs)
+    anyio_sockets.getaddrinfo = patched_anyio_getaddrinfo
+except Exception: pass
 
-    def patched_gethostbyname(host):
-        if host and isinstance(host, str) and 'telegram.org' in host:
-            return "149.154.167.220"
-        return _real_gethostbyname(host)
-
-    # Apply to both modules immediately
-    _socket.getaddrinfo = patched_getaddrinfo
-    socket.getaddrinfo = patched_getaddrinfo
-    socket.gethostbyname = patched_gethostbyname
-    print("🚀 Static DNS Patch Active (Immune to Recursion).")
-except Exception as e:
-    print(f"⚠️ Static DNS Patch failed: {e}")
+print("🚀 HYPER-NUCLEAR DNS Patch Active (Multi-Layer).")
 # --- END PATCH ---
 
 import logging
-import asyncio
 import os
 
 # Setup logging
