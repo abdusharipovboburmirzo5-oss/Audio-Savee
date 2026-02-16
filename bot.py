@@ -19,13 +19,23 @@ def get_static_addrinfo(host, port):
 
 # 1. Base socket patch
 _real_getaddrinfo = _socket.getaddrinfo
+_real_gethostbyname = socket.gethostbyname
+_real_getnameinfo = socket.getnameinfo
+
 def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
     if host and isinstance(host, str) and 'telegram.org' in host:
         return get_static_addrinfo(host, port)
     return _real_getaddrinfo(host, port, family, type, proto, flags)
 
+def patched_gethostbyname(host):
+    if host and isinstance(host, str) and 'telegram.org' in host:
+        print(f"🎯 HYPER-DNS (hostbyname) REDIRECT: {host}")
+        return "149.154.167.220"
+    return _real_gethostbyname(host)
+
 _socket.getaddrinfo = patched_getaddrinfo
 socket.getaddrinfo = patched_getaddrinfo
+socket.gethostbyname = patched_gethostbyname
 
 # 2. Asyncio loop patch (for already initialized loops)
 _real_loop_getaddrinfo = asyncio.BaseEventLoop.getaddrinfo
@@ -1281,37 +1291,16 @@ def main():
     else:
         logger.info(f"✅ BOT_TOKEN detected: {Config.BOT_TOKEN[:5]}...{Config.BOT_TOKEN[-5:]} (Length: {len(Config.BOT_TOKEN)})")
 
-    logger.info("📡 Checking network readiness...")
-    import time
-    network_ready = False
-    for i in range(30): # Wait up to 150 seconds
-        ip_ok = False
-        dns_ok = False
-        try:
-            socket.create_connection(("8.8.8.8", 53), timeout=3)
-            ip_ok = True
-        except: pass
+    logger.info("📡 Relying on Multi-Layer DNS Monkeypatch for api.telegram.org")
+    
+    # Simple check to confirm the patch is working
+    try:
+        test_ip = socket.gethostbyname('api.telegram.org')
+        logger.info(f"✅ DNS Patch verified: api.telegram.org -> {test_ip}")
+    except Exception as e:
+        logger.warning(f"⚠️ DNS Patch verification failed: {e}")
 
-        try:
-            socket.gethostbyname('api.telegram.org')
-            dns_ok = True
-        except: pass
-
-        if dns_ok:
-            logger.info("✅ Network is ready!")
-            network_ready = True
-            break
-        elif ip_ok:
-            logger.warning(f"⏳ IP is ready but DNS failed (Attempt {i+1}/30)...")
-        else:
-            logger.warning(f"⏳ Total network black-out (Attempt {i+1}/30)...")
-        
-        time.sleep(5)
-
-    if not network_ready:
-        logger.error("❌ Failed to establish network connection after 150s. Bot may crash.")
-
-    application = Application.builder().token(Config.BOT_TOKEN).connect_timeout(120).read_timeout(120).write_timeout(120).pool_timeout(120).post_init(post_init).build()
+    application = Application.builder().token(Config.BOT_TOKEN).connect_timeout(300).read_timeout(300).write_timeout(300).pool_timeout(300).post_init(post_init).build()
     application.add_error_handler(error_handler)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
