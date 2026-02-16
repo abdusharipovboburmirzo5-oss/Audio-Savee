@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Bot specific
+downloads/
+*.db
+*.log
+bin/
+
+# OS
+.DS_Store
+Thumbs.db
