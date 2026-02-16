@@ -11,13 +11,16 @@ class Config:
     """Bot configuration settings"""
     
     # Telegram Bot Settings
-    BOT_TOKEN = os.getenv('BOT_TOKEN', '')
+    BOT_TOKEN = os.getenv('BOT_TOKEN', '').strip()
+    
+    # Debug token presence (masked)
+    import logging
+    logger = logging.getLogger(__name__)
     if not BOT_TOKEN:
-        import logging
-        logging.getLogger(__name__).warning("⚠️ BOT_TOKEN is empty! Check your environment variables or secrets.")
-    elif len(BOT_TOKEN) < 10:
-        import logging
-        logging.getLogger(__name__).warning(f"⚠️ BOT_TOKEN looks too short ({len(BOT_TOKEN)} chars). Check your secret.")
+        logger.error("❌ BOT_TOKEN is EMPTY! Check Hugging Face Secrets.")
+    else:
+        # Show first 5 and last 5 chars for verification
+        logger.info(f"✅ BOT_TOKEN detected: {BOT_TOKEN[:5]}...{BOT_TOKEN[-5:]} (Length: {len(BOT_TOKEN)})")
 
     ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', '')
     REQUIRED_CHANNEL = "@Abdusharipovuz"
