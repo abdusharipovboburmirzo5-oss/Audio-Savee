@@ -38,7 +38,6 @@ class InstagramDownloader:
             'extractor_args': {
                 'youtube': {
                     'skip': ['dash', 'hls', 'translated_subs'],
-                    'player_client': ['web', 'android', 'ios'],
                 },
                 'tiktok': {'app_version': '20.2.1', 'manifest_app_version': '20.2.1'},
             },
@@ -268,15 +267,16 @@ class InstagramDownloader:
 
     def _download_audio_sync(self, url: str, progress_hook=None) -> Optional[Dict[str, Any]]:
         try:
-            # Ultimate flexible format: just give us the best audio available, no matter what
+            # Standard format selection that usually works best with signature solver
             ydl_opts = self._get_ydl_opts({
-                'format': 'bestaudio/best',
+                'format': 'ba/b',
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
                 }],
-                'writethumbnail': True,
+                'quiet': False, # Allow some logging in case of error
+                'no_warnings': False,
             }, progress_hook=progress_hook)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.info(f"Downloading audio from: {url}")
