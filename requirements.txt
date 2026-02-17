@@ -8,5 +8,6 @@ aiohttp==3.9.3
 shazamio
 lyricsgenius
 httpx
+mutagen==1.47.0
 dnspython
 Flask==3.0.0

@@ -38,6 +38,7 @@ class InstagramDownloader:
             'extractor_args': {
                 'youtube': {
                     'skip': ['dash', 'hls', 'translated_subs'],
+                    'player_client': ['web', 'android', 'ios'],
                 },
                 'tiktok': {'app_version': '20.2.1', 'manifest_app_version': '20.2.1'},
             },
@@ -52,7 +53,6 @@ class InstagramDownloader:
             'concurrent_fragment_downloads': 5,
             'external_downloader_args': {'ffmpeg': ['-loglevel', 'panic']},
             'check_formats': False, # Speed up info extraction
-            'force_ipv4': True, # Force IPv4 to avoid IPv6 blocks
             'max_filesize': Config.MAX_FILE_SIZE, # Limit file size
         }
         
@@ -268,7 +268,7 @@ class InstagramDownloader:
 
     def _download_audio_sync(self, url: str, progress_hook=None) -> Optional[Dict[str, Any]]:
         try:
-            # Ultra-flexible format selection to avoid "Requested format is not available"
+            # Ultimate flexible format: just give us the best audio available, no matter what
             ydl_opts = self._get_ydl_opts({
                 'format': 'bestaudio/best',
                 'postprocessors': [{
@@ -276,8 +276,7 @@ class InstagramDownloader:
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
                 }],
-                'prefer_ffmpeg': True,
-                'keepvideo': False,
+                'writethumbnail': True,
             }, progress_hook=progress_hook)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.info(f"Downloading audio from: {url}")
