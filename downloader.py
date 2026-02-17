@@ -38,7 +38,7 @@ class InstagramDownloader:
             'extractor_args': {
                 'youtube': {
                     'skip': ['dash', 'hls', 'translated_subs'],
-                    'player_client': ['mweb', 'android', 'ios'],
+                    'player_client': ['android', 'ios', 'mweb'],
                     'player_skip': ['configs'],
                 },
                 'tiktok': {'app_version': '20.2.1', 'manifest_app_version': '20.2.1'},
@@ -56,6 +56,7 @@ class InstagramDownloader:
             'check_formats': False, # Speed up info extraction
             'force_ipv4': True, # Forces IPv4 which is often more stable on Render
             'max_filesize': Config.MAX_FILE_SIZE, # Limit file size
+            'ffmpeg_location': 'ffmpeg', # Explicitly use system ffmpeg
         }
         
         # Look for cookies.txt to bypass persistent blocks
@@ -75,10 +76,13 @@ class InstagramDownloader:
         if url and ('youtube.com' in url or 'youtu.be' in url or 'ytsearch' in url):
             # Dynamic Bypass: skip webpage for DOWNLOADS (429), but keep for SEARCH
             if 'ytsearch' not in url:
+                opts['params'] = opts.get('params', {})
                 opts['extractor_args']['youtube']['skip'].append('webpage')
                 logger.warning(f"🛡️ Download Bypass: Skipping webpage for {url}")
             else:
-                logger.warning(f"🔍 Search Mode: Allowing webpage for search query")
+                # SEARCH MODE: Must use mobile clients and specialized headers
+                opts['extractor_args']['youtube']['player_client'] = ['android', 'ios']
+                logger.warning(f"🔍 Search Mode: Using Mobile Extractor for reliability")
         
         return opts
 

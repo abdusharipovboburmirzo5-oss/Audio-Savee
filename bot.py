@@ -75,10 +75,30 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-# Add local bin to PATH for FFmpeg
-local_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin')
-if os.path.exists(local_bin):
-    os.environ['PATH'] = local_bin + os.pathsep + os.environ.get('PATH', '')
+# --- PERSISTENT INSTANCE LOCK (Render.com Disk) ---
+import time
+def acquire_instance_lock():
+    lock_file = os.path.join(Config.DOWNLOAD_DIR, '.bot_lock')
+    instance_info = f"{instance_name} started at {time.ctime()}"
+    
+    # Ensure download dir exists
+    if not os.path.exists(Config.DOWNLOAD_DIR):
+        os.makedirs(Config.DOWNLOAD_DIR)
+        
+    if os.path.exists(lock_file):
+        try:
+            mtime = os.path.getmtime(lock_file)
+            age = time.time() - mtime
+            if age < 60: # If lock is very fresh, wait a bit
+                logger.warning(f"⚠️ Lock detected (Age: {int(age)}s). Waiting for other instance to settle...")
+                time.sleep(10)
+        except Exception: pass
+        
+    with open(lock_file, 'w') as f:
+        f.write(instance_info)
+    logger.info(f"🔒 Instance Lock acquired: {instance_info}")
+
+acquire_instance_lock()
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -1386,7 +1406,14 @@ def main():
     application.add_handler(InlineQueryHandler(handle_inline_query))
     print(f"✅ Bot ishladi! (Instance: [{instance_name}] successfully started and ready)")
     logger.info(f"✅ Bot ishladi! (Instance: [{instance_name}])")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    
+    try:
+        application.run_polling(allowed_updates=Update.ALL_TYPES, close_loop=False)
+    except Exception as e:
+        if "Conflict" in str(e):
+            logger.error("🛑 Conflict detected! Another instance is running. This instance will exit to avoid token collision.")
+            sys.exit(0)
+        raise e
 
 async def delayed_cleanup(filepath: str, delay: int = 600):
     """Cleanup file after a delay to allow tool usage"""
