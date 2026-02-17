@@ -38,8 +38,7 @@ class InstagramDownloader:
             'extractor_args': {
                 'youtube': {
                     'skip': ['dash', 'hls', 'translated_subs'],
-                    'player_client': ['ios', 'android', 'web'], # Mobile clients are less restrictive
-                    'player_skip': ['webpage', 'configs'],
+                    'player_client': ['android', 'web', 'ios'], # Reordered and simplified
                 },
                 'tiktok': {'app_version': '20.2.1', 'manifest_app_version': '20.2.1'},
             },
@@ -270,10 +269,14 @@ class InstagramDownloader:
 
     def _download_audio_sync(self, url: str, progress_hook=None) -> Optional[Dict[str, Any]]:
         try:
-            # Force best single audio track to avoid merging
+            # Loosen format selection to avoid "Requested format is not available"
             ydl_opts = self._get_ydl_opts({
-                'format': 'bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio/best',
-                'postprocessors': [] # No post-processing to avoid ffmpeg
+                'format': 'bestaudio/best',
+                'postprocessors': [{ # Ensure we get a standard format
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }]
             }, progress_hook=progress_hook)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.info(f"Downloading audio from: {url}")
