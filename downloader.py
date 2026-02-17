@@ -38,7 +38,6 @@ class InstagramDownloader:
             'extractor_args': {
                 'youtube': {
                     'skip': ['dash', 'hls', 'translated_subs'],
-                    'player_client': ['android', 'web', 'ios'], # Reordered and simplified
                 },
                 'tiktok': {'app_version': '20.2.1', 'manifest_app_version': '20.2.1'},
             },
@@ -58,10 +57,10 @@ class InstagramDownloader:
         }
         
         # Look for cookies.txt to bypass persistent blocks
-        cookies_path = os.path.join(os.getcwd(), 'cookies.txt')
+        cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
         if os.path.exists(cookies_path):
             opts['cookiefile'] = cookies_path
-            logger.info("🍪 Using cookies.txt for yt-dlp")
+            logger.info(f"🍪 Using cookies.txt for yt-dlp at: {cookies_path}")
 
         if progress_hook:
             opts['progress_hooks'] = [progress_hook]
@@ -269,20 +268,27 @@ class InstagramDownloader:
 
     def _download_audio_sync(self, url: str, progress_hook=None) -> Optional[Dict[str, Any]]:
         try:
-            # Loosen format selection to avoid "Requested format is not available"
+            # Ultra-flexible format selection to avoid "Requested format is not available"
             ydl_opts = self._get_ydl_opts({
                 'format': 'bestaudio/best',
-                'postprocessors': [{ # Ensure we get a standard format
+                'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
-                }]
+                }],
+                'prefer_ffmpeg': True,
+                'keepvideo': False,
             }, progress_hook=progress_hook)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.info(f"Downloading audio from: {url}")
                 info = ydl.extract_info(url, download=True)
                 if info:
-                    filepath = ydl.prepare_filename(info)
+                    # Get the actual filepath from requested_downloads if available
+                    downloads = info.get('requested_downloads', [])
+                    if downloads and 'filepath' in downloads[0]:
+                        filepath = downloads[0]['filepath']
+                    else:
+                        filepath = ydl.prepare_filename(info)
                     
                     return {
                         'filepath': filepath,
