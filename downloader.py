@@ -21,7 +21,7 @@ class InstagramDownloader:
         self.download_cache = {} # Cache for file paths: {url: (filepath, timestamp)}
         self.cache_ttl = 3600 # 1 hour
     
-    def _get_ydl_opts(self, custom_opts: Dict = None, progress_hook=None) -> Dict:
+    def _get_ydl_opts(self, url: str = None, custom_opts: Dict = None, progress_hook=None) -> Dict:
         """Get base yt-dlp options"""
         opts = {
             'format': 'bestvideo+bestaudio/best',
@@ -61,10 +61,14 @@ class InstagramDownloader:
         # Look for cookies.txt to bypass persistent blocks
         cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
         if os.path.exists(cookies_path):
-            # Special logic: Only use cookies if NOT YouTube, or as a fallback
-            # (Because mobile clients android/ios/mweb don't support cookies well)
-            opts['cookiefile'] = cookies_path
-            logger.warning(f"🍪 Bypass Tracking: Cookies found at {cookies_path}")
+            # Surgical Bypass: YouTube mobile clients (android/ios) fail if cookies are provided.
+            # We only use cookies for YouTube if specifically forced or for other platforms.
+            is_youtube = url and ('youtube.com' in url or 'youtu.be' in url or 'ytsearch' in url)
+            if not is_youtube:
+                opts['cookiefile'] = cookies_path
+                logger.warning(f"🍪 Bypass Active: Using cookies.txt for {url or 'platform'}")
+            else:
+                logger.warning(f"🛡️ Mobile Bypass: Skipping cookies for YouTube stability")
         else:
             logger.warning("⚠️ Bypass Warning: cookies.txt NOT found!")
 
@@ -94,7 +98,7 @@ class InstagramDownloader:
 
     def _download_video_sync(self, url: str, quality: str = 'best', progress_hook=None) -> Optional[Dict[str, Any]]:
         try:
-            ydl_opts = self._get_ydl_opts(progress_hook=progress_hook)
+            ydl_opts = self._get_ydl_opts(url=url, progress_hook=progress_hook)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.info(f"Downloading video from: {url}")
                 info = ydl.extract_info(url, download=True)
@@ -134,7 +138,7 @@ class InstagramDownloader:
 
     def _download_photo_sync(self, url: str) -> Optional[Dict[str, Any]]:
         try:
-            ydl_opts = self._get_ydl_opts({'writethumbnail': True})
+            ydl_opts = self._get_ydl_opts(url=url, custom_opts={'writethumbnail': True})
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 if info:
@@ -170,7 +174,7 @@ class InstagramDownloader:
 
         try:
             # Use base options for search too to benefit from bypasses
-            ydl_opts = self._get_ydl_opts({
+            ydl_opts = self._get_ydl_opts(url=query, custom_opts={
                 'format': 'bestaudio/best', 
                 'extract_flat': True,  # Fast search
                 'socket_timeout': 10,
@@ -275,7 +279,7 @@ class InstagramDownloader:
     def _download_audio_sync(self, url: str, progress_hook=None) -> Optional[Dict[str, Any]]:
         try:
             # Standard format selection that usually works best with signature solver
-            ydl_opts = self._get_ydl_opts({
+            ydl_opts = self._get_ydl_opts(url=url, custom_opts={
                 'format': 'ba/b',
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
