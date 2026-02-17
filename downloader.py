@@ -26,8 +26,8 @@ class InstagramDownloader:
         opts = {
             'format': 'bestvideo+bestaudio/best',
             'outtmpl': os.path.join(self.download_dir, '%(id)s.%(ext)s'),
-            'quiet': True,
-            'no_warnings': True,
+            'quiet': False,
+            'no_warnings': False,
             'noplaylist': True,
             'nocheckcertificate': True,
             'no_color': True,
@@ -60,7 +60,9 @@ class InstagramDownloader:
         cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
         if os.path.exists(cookies_path):
             opts['cookiefile'] = cookies_path
-            logger.info(f"🍪 Using cookies.txt for yt-dlp at: {cookies_path}")
+            logger.warning(f"🍪 Bypass Active: Using cookies.txt for yt-dlp")
+        else:
+            logger.warning("⚠️ Bypass Warning: cookies.txt NOT found!")
 
         if progress_hook:
             opts['progress_hooks'] = [progress_hook]
