@@ -38,6 +38,7 @@ class InstagramDownloader:
             'extractor_args': {
                 'youtube': {
                     'skip': ['dash', 'hls', 'translated_subs'],
+                    'player_client': ['android', 'ios'], # Avoid 'web' which has Data Sync ID issues
                 },
                 'tiktok': {'app_version': '20.2.1', 'manifest_app_version': '20.2.1'},
             },
@@ -48,7 +49,7 @@ class InstagramDownloader:
                 'Sec-Fetch-Mode': 'navigate',
             },
             'noprogress': True,
-            'ffmpeg_location': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin'),
+            'prefer_free_formats': True, # Stick to simpler formats
             'concurrent_fragment_downloads': 5,
             'external_downloader_args': {'ffmpeg': ['-loglevel', 'panic']},
             'check_formats': False, # Speed up info extraction
