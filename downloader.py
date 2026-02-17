@@ -178,7 +178,8 @@ class InstagramDownloader:
 
         try:
             # Use base options for search too to benefit from bypasses
-            ydl_opts = self._get_ydl_opts(url=query, custom_opts={
+            # Pass f"ytsearch:{query}" so _get_ydl_opts knows it's a YouTube search
+            ydl_opts = self._get_ydl_opts(url=f"ytsearch:{query}", custom_opts={
                 'format': 'bestaudio/best', 
                 'extract_flat': True,  # Fast search
                 'socket_timeout': 10,
