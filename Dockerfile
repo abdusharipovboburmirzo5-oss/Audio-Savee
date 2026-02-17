@@ -6,22 +6,20 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Create and use a non-root user for Hugging Face
-RUN useradd -m -u 1000 user
-USER user
-ENV PATH="/home/user/.local/bin:${PATH}"
-
 WORKDIR /app
 
 # Copy requirements and install dependencies
-COPY --chown=user requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy bot code
-COPY --chown=user . .
+COPY . .
 
 # Create downloads directory
 RUN mkdir -p downloads
+
+# Expose port for health check
+EXPOSE 8080
 
 # Run bot
 CMD ["python", "bot.py"]

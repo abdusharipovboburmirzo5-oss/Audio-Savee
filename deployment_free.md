@@ -2,12 +2,16 @@
 
 Do'stim, mablag'ingiz bo'lmasa ham botni ishga tushirib, pul ishlashni boshlashingiz mumkin. Quyida eng yaxshi 3 ta tekin variantni tayyorladim.
 
-## 1-Variant: Hugging Face Spaces (Karta so'ramaydi!)
-Hugging Face - botni 24/7 bepul ishlatish uchun eng zo'r joy.
+## 1-Variant: Render.com (Tavsiya qilinadi!)
+Render - botni 24/7 ishlatish uchun eng stabil va oson variant.
 
-1. [huggingface.co/new-space](https://huggingface.co/new-space) sahifasiga kiring.
-2. **Space Name**: Xohlagan nom yozing (masalan: `audio-save-bot`).
-3. **SDK**: **Docker**-ni tanlang.
+1. [dashboard.render.com](https://dashboard.render.com) ga kiring.
+2. **"New +"** -> **"Web Service"** tugmasini bosing.
+3. GitHub repozitoriyangizni ulang.
+4. **Runtime**: `Docker` ni tanlang.
+5. `BOT_TOKEN` va `ADMIN_CHAT_ID` ni **Environment Variables** ga qo'shing.
+
+## 2-Variant: Hugging Face Spaces (Karta so'ramaydi!)
 4. **License**: **Apache 2.0** deb tanlang.
 5. **Repository**: Pastroqda "Connect your GitHub" tugmasini bosing va o'zingizning GitHub repozitoriyangizni (`Audio-Savee`) tanlang.
 6. **Create Space** tugmasini bosing.
