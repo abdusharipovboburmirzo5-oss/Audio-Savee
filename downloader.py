@@ -37,15 +37,16 @@ class InstagramDownloader:
             'merge_output_format': 'mp4',
             'extractor_args': {
                 'youtube': {
-                    'skip': ['dash', 'hls', 'translated_subs', 'webpage'], # Skip webpage to avoid initial 429
-                    'player_client': ['web', 'android', 'ios'], # Re-enable web for cookie support
+                    'skip': ['dash', 'hls', 'translated_subs', 'webpage'],
+                    'player_client': ['mweb', 'android', 'ios'],
+                    'player_skip': ['webpage', 'configs'],
                 },
                 'tiktok': {'app_version': '20.2.1', 'manifest_app_version': '20.2.1'},
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Language': 'en-US,en;q=0.9,ru;q=0.8,uz;q=0.7',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
                 'Sec-Fetch-Mode': 'navigate',
             },
             'noprogress': True,
@@ -60,8 +61,10 @@ class InstagramDownloader:
         # Look for cookies.txt to bypass persistent blocks
         cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
         if os.path.exists(cookies_path):
+            # Special logic: Only use cookies if NOT YouTube, or as a fallback
+            # (Because mobile clients android/ios/mweb don't support cookies well)
             opts['cookiefile'] = cookies_path
-            logger.warning(f"🍪 Bypass Active: Using cookies.txt for yt-dlp")
+            logger.warning(f"🍪 Bypass Tracking: Cookies found at {cookies_path}")
         else:
             logger.warning("⚠️ Bypass Warning: cookies.txt NOT found!")
 
