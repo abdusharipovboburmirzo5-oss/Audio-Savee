@@ -1318,6 +1318,11 @@ async def post_init(application: Application):
 
 def main():
     """Start the bot"""
+    # Hugging Face Conflict Preventer: Exit if running on HF to avoid token conflict with Render
+    if os.getenv('SPACE_ID'):
+        print("⚠️ Hugging Face Space detected. Exiting to avoid conflict with Render.com.")
+        import sys
+        sys.exit(0)
     # Start health check server first
     try:
         from health_server import start_health_server
