@@ -699,38 +699,43 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         pass # Ignore query too old errors
     
-    if data.startswith('lang_'):
-        new_lang = data.split('_')[1]
-        db.set_user_language(user.id, new_lang)
-        await query.edit_message_text(get_message(new_lang, 'language_changed'))
-    elif data == 'toggle_auto_audio':
-        current = db.get_user_auto_audio(user.id)
-        db.set_user_auto_audio(user.id, not current)
-        status_text = get_message(lang, 'on') if not current else get_message(lang, 'off')
-        await query.edit_message_text(
-            get_message(lang, 'settings').format(auto_audio=status_text),
-            reply_markup=Keyboards.settings(not current, lang), parse_mode='HTML'
-        )
-    elif data.startswith('sl_song_'): await handle_select_song(query, user, lang, data)
-    elif data.startswith('sl_song_search_'): await handle_song_search_callback(query, user, lang, data)
-    elif data.startswith('msv_'): await handle_music_version(query, user, lang, data)
-    elif data.startswith('add_fav_'): await handle_add_favorite(query, user, lang, data)
-    elif data == 'referral': await handle_referral(query, user, lang, context)
-    elif data == 'wallet': await handle_wallet(query, user, lang, context)
-    elif data == 'withdraw_start': await handle_withdraw_start(query, user, lang, context)
-    elif data == 'check_sub': await handle_check_sub(query, user, lang, context)
-    elif data == 'back_to_main':
-        await query.edit_message_text(get_message(lang, 'start'), reply_markup=Keyboards.main_menu(lang))
-    elif data == 'trending': await handle_trending(query, user, lang, context)
-    elif data == 'recent': await handle_recent_callback(query, user, lang, context)
-    elif data == 'set_lang': await query.edit_message_text("🌐 Tilni tanlang / Выберите язык / Select language:", reply_markup=Keyboards.language_selection())
-    elif data == 'download_video': await download_video(query, user, lang)
-    elif data == 'download_audio': await download_audio(query, user, lang)
-    elif data == 'download_photo': await download_photo(query, user, lang)
-    elif data == 'cancel': 
-        try: await query.message.delete()
-        except: await query.answer()
-    elif data.startswith('tool_'): await handle_tool_callback(query, user, lang, data, context)
+    from telegram.error import BadRequest
+    try:
+        if data.startswith('lang_'):
+            new_lang = data.split('_')[1]
+            db.set_user_language(user.id, new_lang)
+            await query.edit_message_text(get_message(new_lang, 'language_changed'))
+        elif data == 'toggle_auto_audio':
+            current = db.get_user_auto_audio(user.id)
+            db.set_user_auto_audio(user.id, not current)
+            status_text = get_message(lang, 'on') if not current else get_message(lang, 'off')
+            await query.edit_message_text(
+                get_message(lang, 'settings').format(auto_audio=status_text),
+                reply_markup=Keyboards.settings(not current, lang), parse_mode='HTML'
+            )
+        elif data.startswith('sl_song_'): await handle_select_song(query, user, lang, data)
+        elif data.startswith('sl_song_search_'): await handle_song_search_callback(query, user, lang, data)
+        elif data.startswith('msv_'): await handle_music_version(query, user, lang, data)
+        elif data.startswith('add_fav_'): await handle_add_favorite(query, user, lang, data)
+        elif data == 'referral': await handle_referral(query, user, lang, context)
+        elif data == 'wallet': await handle_wallet(query, user, lang, context)
+        elif data == 'withdraw_start': await handle_withdraw_start(query, user, lang, context)
+        elif data == 'check_sub': await handle_check_sub(query, user, lang, context)
+        elif data == 'back_to_main':
+            await query.edit_message_text(get_message(lang, 'start'), reply_markup=Keyboards.main_menu(lang))
+        elif data == 'trending': await handle_trending(query, user, lang, context)
+        elif data == 'recent': await handle_recent_callback(query, user, lang, context)
+        elif data == 'set_lang': await query.edit_message_text("🌐 Tilni tanlang / Выберите язык / Select language:", reply_markup=Keyboards.language_selection())
+        elif data == 'download_video': await download_video(query, user, lang)
+        elif data == 'download_audio': await download_audio(query, user, lang)
+        elif data == 'download_photo': await download_photo(query, user, lang)
+        elif data == 'cancel': 
+            try: await query.message.delete()
+            except: await query.answer()
+        elif data.startswith('tool_'): await handle_tool_callback(query, user, lang, data, context)
+    except BadRequest as e:
+        if "Message is not modified" not in str(e):
+             print(f"⚠️ Callback Error: {e}")
 
 async def handle_check_sub(query, user, lang, context):
     """Handle callback to check subscription status"""
