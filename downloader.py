@@ -37,9 +37,9 @@ class InstagramDownloader:
             'merge_output_format': 'mp4',
             'extractor_args': {
                 'youtube': {
-                    'skip': ['dash', 'hls', 'translated_subs', 'webpage'],
+                    'skip': ['dash', 'hls', 'translated_subs'],
                     'player_client': ['mweb', 'android', 'ios'],
-                    'player_skip': ['webpage', 'configs'],
+                    'player_skip': ['configs'],
                 },
                 'tiktok': {'app_version': '20.2.1', 'manifest_app_version': '20.2.1'},
             },
@@ -72,10 +72,14 @@ class InstagramDownloader:
         else:
             logger.warning("⚠️ Bypass Warning: cookies.txt NOT found!")
 
-        if progress_hook:
-            opts['progress_hooks'] = [progress_hook]
-        if custom_opts:
-            opts.update(custom_opts)
+        if url and ('youtube.com' in url or 'youtu.be' in url or 'ytsearch' in url):
+            # Dynamic Bypass: skip webpage for DOWNLOADS (429), but keep for SEARCH
+            if 'ytsearch' not in url:
+                opts['extractor_args']['youtube']['skip'].append('webpage')
+                logger.warning(f"🛡️ Download Bypass: Skipping webpage for {url}")
+            else:
+                logger.warning(f"🔍 Search Mode: Allowing webpage for search query")
+        
         return opts
 
     async def _run_sync(self, func, *args, **kwargs):
