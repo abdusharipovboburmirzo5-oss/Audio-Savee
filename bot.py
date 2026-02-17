@@ -1318,6 +1318,14 @@ async def post_init(application: Application):
 
 def main():
     """Start the bot"""
+    import uuid
+    import platform
+    instance_id = str(uuid.uuid4())[:8]
+    node_name = platform.node()
+    instance_name = f"{node_name}-{instance_id}"
+    
+    logger.info(f"🚀 Bot Instance Starting: [{instance_name}]")
+    
     # Hugging Face Conflict Preventer: Exit if running on HF to avoid token conflict with Render
     if os.getenv('SPACE_ID'):
         print("⚠️ Hugging Face Space detected. Exiting to avoid conflict with Render.com.")
@@ -1376,7 +1384,8 @@ def main():
     application.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice))
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_handler(InlineQueryHandler(handle_inline_query))
-    print("✅ Bot ishladi! (Bot successfully started and ready)")
+    print(f"✅ Bot ishladi! (Instance: [{instance_name}] successfully started and ready)")
+    logger.info(f"✅ Bot ishladi! (Instance: [{instance_name}])")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 async def delayed_cleanup(filepath: str, delay: int = 600):
