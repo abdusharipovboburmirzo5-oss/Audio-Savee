@@ -50,10 +50,10 @@ sudo apt install ffmpeg
 
 ### 3-Qadam: Bot Tokenni Tekshirish
 
-`.env` fayli allaqachon sozlangan:
+`.env` faylini sozlang (tokeningizni kiriting):
 ```
-BOT_TOKEN=7637789321:AAHp_NpaqCJnlmVmXPh0OtioJme8wDhJ5ZA
-ADMIN_CHAT_ID=5657790788
+BOT_TOKEN=your_bot_token_here
+ADMIN_CHAT_ID=your_telegram_user_id
 ```
 
 ## ▶️ Botni Ishga Tushirish

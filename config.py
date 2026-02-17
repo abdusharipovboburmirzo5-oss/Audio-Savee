@@ -13,19 +13,20 @@ class Config:
     # Telegram Bot Settings
     BOT_TOKEN = os.getenv('BOT_TOKEN', '').strip()
     
-    # Debug token presence (masked)
+    # Debug token presence (DO NOT log token values!)
     import logging
     logger = logging.getLogger(__name__)
     if not BOT_TOKEN:
         logger.error("❌ BOT_TOKEN is EMPTY! Check Hugging Face Secrets (Settings -> Variables and secrets).")
     else:
-        # Show first 5 and last 5 chars for verification
         source = "System Environment" if 'BOT_TOKEN' in os.environ else ".env file"
-        logger.info(f"✅ BOT_TOKEN detected from {source}: {BOT_TOKEN[:5]}...{BOT_TOKEN[-5:]} (Length: {len(BOT_TOKEN)})")
+        logger.debug(f"✅ BOT_TOKEN loaded from {source} (Length: {len(BOT_TOKEN)})")
 
     ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', '')
-    REQUIRED_CHANNEL = "@Abdusharipovuz"
-    CHANNEL_URL = "https://t.me/Abdusharipovuz"
+    # Support multiple admins (comma-separated IDs)
+    ADMIN_IDS = [id.strip() for id in os.getenv('ADMIN_IDS', ADMIN_CHAT_ID).split(',') if id.strip()]
+    REQUIRED_CHANNEL = os.getenv('REQUIRED_CHANNEL', '@Abdusharipovuz')
+    CHANNEL_URL = os.getenv('CHANNEL_URL', 'https://t.me/Abdusharipovuz')
     
     # Download Settings
     DOWNLOAD_DIR = os.getenv('DOWNLOAD_DIR', 'downloads')

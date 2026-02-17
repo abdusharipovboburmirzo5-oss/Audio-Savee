@@ -37,8 +37,8 @@ nano .env
 ```
 Fayl ichiga quyidagilarni yozing:
 ```env
-BOT_TOKEN=7637789321:AAHp_NpaqCJnlmVmXPh0OtioJme8wDhJ5ZA
-ADMIN_CHAT_ID=5657790788
+BOT_TOKEN=your_bot_token_here
+ADMIN_CHAT_ID=your_telegram_user_id
 DOWNLOAD_DIR=downloads
 ```
 (`Ctrl+O`, `Enter`, `Ctrl+X` tugmalari orqali saqlang).

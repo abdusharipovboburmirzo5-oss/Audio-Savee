@@ -12,16 +12,27 @@ from config import Config
 # Setup logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.WARNING
 )
 logger = logging.getLogger(__name__)
+
+def sanitize_url(url: str) -> str:
+    """
+    Remove tracking parameters from URL
+    """
+    # Remove common tracking parameters
+    url = re.sub(r'[?&](fbclid|igshid|share_id|si|utm_[^=&]+)=[^&]*', '', url)
+    # Clean up trailing ? or &
+    url = re.sub(r'[?&]$', '', url)
+    return url.strip()
 
 def is_valid_url(url: str) -> bool:
     """
     Check if URL is matching any supported platform
     """
+    cleaned_url = sanitize_url(url)
     for pattern in Config.ALL_PATTERNS:
-        if re.search(pattern, url):
+        if re.search(pattern, cleaned_url):
             return True
     return False
 

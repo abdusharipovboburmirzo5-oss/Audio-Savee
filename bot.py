@@ -14,7 +14,7 @@ def get_static_addrinfo(host, port):
     ip = "149.154.167.220"
     try: p = int(port)
     except: p = 443
-    print(f"🎯 HYPER-DNS REDIRECT: {host} -> {ip}:{p}")
+    # print(f"🎯 HYPER-DNS REDIRECT: {host} -> {ip}:{p}")
     return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, p))]
 
 # 1. Base socket patch
@@ -29,7 +29,7 @@ def patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
 
 def patched_gethostbyname(host):
     if host and isinstance(host, str) and 'telegram.org' in host:
-        print(f"🎯 HYPER-DNS (hostbyname) REDIRECT: {host}")
+        # print(f"🎯 HYPER-DNS (hostbyname) REDIRECT: {host}")
         return "149.154.167.220"
     return _real_gethostbyname(host)
 
@@ -56,7 +56,7 @@ try:
     anyio_sockets.getaddrinfo = patched_anyio_getaddrinfo
 except Exception: pass
 
-print("🚀 HYPER-NUCLEAR DNS Patch Active (Multi-Layer).")
+# print("🚀 HYPER-NUCLEAR DNS Patch Active (Multi-Layer).")
 # --- END PATCH ---
 
 import logging
@@ -65,8 +65,14 @@ import os
 # Setup logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.WARNING
 )
+
+# Suppress httpx and telegram logs to prevent token leakage
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 # Add local bin to PATH for FFmpeg
@@ -93,6 +99,7 @@ from downloader import InstagramDownloader
 from audio_extractor import AudioExtractor
 from database import Database
 from audio_features import audio_features
+from rate_limiter import rate_limiter
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log Errors caused by Updates."""
@@ -108,6 +115,10 @@ user_data_store = {}
 
 # Global state for throttled updates
 progress_update_tracker = {} # {query_id: last_update_time}
+
+def is_admin(user_id: int) -> bool:
+    """Check if user is an admin"""
+    return str(user_id) in Config.ADMIN_IDS or str(user_id) == Config.ADMIN_CHAT_ID
 
 def get_progress_bar(percent):
     """Generate a text progress bar"""
@@ -215,7 +226,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(get_message(lang, 'sub_required'), reply_markup=Keyboards.subscribe_keyboard(lang), parse_mode='HTML')
         return
 
-    if str(user.id) != Config.ADMIN_CHAT_ID:
+    if not is_admin(user.id):
         return
     
     stats = db.get_admin_stats()
@@ -237,7 +248,13 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(get_message(lang, 'sub_required'), reply_markup=Keyboards.subscribe_keyboard(lang), parse_mode='HTML')
         return
 
-    if str(user.id) != Config.ADMIN_CHAT_ID:
+    if not is_admin(user.id):
+        return
+    
+    # Broadcast cooldown check
+    if not rate_limiter.check_broadcast():
+        cooldown = rate_limiter.get_broadcast_cooldown()
+        await update.message.reply_text(f"⏳ Broadcast cooldown! {cooldown // 60} daqiqa kutish kerak.")
         return
     
     if not context.args and not update.message.caption:
@@ -306,7 +323,7 @@ async def handle_recent_callback(query, user, lang, context):
 async def check_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Admin command to check bot's permissions in the channel"""
     user = update.effective_user
-    if str(user.id) != Config.ADMIN_CHAT_ID:
+    if not is_admin(user.id):
         return
     
     status_msg = f"🔍 <b>Diagnostika:</b>\n\n📌 Kanal: {Config.REQUIRED_CHANNEL}\n"
@@ -548,9 +565,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = db.get_user_language(user.id)
     message_text = update.message.text
     
-    # if not await is_subscribed(user.id, context):
-    #     await update.message.reply_text(get_message(lang, 'sub_required'), reply_markup=Keyboards.subscribe_keyboard(lang), parse_mode='HTML')
-    #     return
+    # Rate limiting check (admins are exempt)
+    if not is_admin(user.id) and not rate_limiter.check_message(user.id):
+        cooldown = rate_limiter.get_remaining_cooldown(user.id)
+        await update.message.reply_text(
+            f"⚠️ Juda ko'p so'rov! {cooldown} soniya kutib turing.",
+            parse_mode='HTML'
+        )
+        return
 
     if context.user_data.get('awaiting_withdraw'):
         # Process withdrawal request
@@ -616,6 +638,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
     if is_valid_url(message_text):
+        # Sanitize URL involves removing tracking params
+        message_text = sanitize_url(message_text)
+        
         # Check if it's a playlist (simple check for list= or playlist/ or albums/)
         is_playlist = 'list=' in message_text or '/playlist/' in message_text or '/album/' in message_text
         
@@ -669,7 +694,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = db.get_user_language(user.id)
     data = query.data
     
-    await query.answer()
+    try:
+        await query.answer()
+    except Exception:
+        pass # Ignore query too old errors
     
     if data.startswith('lang_'):
         new_lang = data.split('_')[1]
@@ -1285,22 +1313,41 @@ async def post_init(application: Application):
 
 def main():
     """Start the bot"""
-    # Token diagnostics
+    # Start health check server first
+    try:
+        from health_server import start_health_server
+        start_health_server()
+        logger.info("🌐 Health check server started successfully")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not start health server: {e}")
+        logger.warning("Bot will continue without health endpoint")
+    
+    # Token diagnostics (DO NOT log token values!)
     if not Config.BOT_TOKEN:
         logger.error("❌ BOT_TOKEN is EMPTY! Check Hugging Face Secrets.")
     else:
-        logger.info(f"✅ BOT_TOKEN detected: {Config.BOT_TOKEN[:5]}...{Config.BOT_TOKEN[-5:]} (Length: {len(Config.BOT_TOKEN)})")
+        logger.info(f"✅ BOT_TOKEN loaded (Length: {len(Config.BOT_TOKEN)})")
 
     logger.info("📡 Relying on Multi-Layer DNS Monkeypatch for api.telegram.org")
     
-    # Simple check to confirm the patch is working
     try:
         test_ip = socket.gethostbyname('api.telegram.org')
         logger.info(f"✅ DNS Patch verified: api.telegram.org -> {test_ip}")
     except Exception as e:
         logger.warning(f"⚠️ DNS Patch verification failed: {e}")
 
-    application = Application.builder().token(Config.BOT_TOKEN).connect_timeout(300).read_timeout(300).write_timeout(300).pool_timeout(300).post_init(post_init).build()
+    # Configure HTTPXRequest with HTTP/1.1 to avoid connection issues
+    from telegram.request import HTTPXRequest
+    request = HTTPXRequest(
+        connection_pool_size=10,
+        connect_timeout=60.0,
+        read_timeout=60.0,
+        write_timeout=60.0,
+        pool_timeout=60.0,
+        http_version="1.1"  # Force HTTP 1.1
+    )
+
+    application = Application.builder().token(Config.BOT_TOKEN).request(request).post_init(post_init).build()
     application.add_error_handler(error_handler)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
@@ -1319,7 +1366,7 @@ def main():
     application.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice))
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_handler(InlineQueryHandler(handle_inline_query))
-    logger.info("Bot started with optimizations!")
+    print("✅ Bot ishladi! (Bot successfully started and ready)")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 async def delayed_cleanup(filepath: str, delay: int = 600):

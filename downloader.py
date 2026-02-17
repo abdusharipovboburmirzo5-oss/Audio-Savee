@@ -48,6 +48,7 @@ class InstagramDownloader:
             'external_downloader_args': {'ffmpeg': ['-loglevel', 'panic']},
             'check_formats': False, # Speed up info extraction
             'force_ipv4': True, # Force IPv4 to avoid IPv6 blocks
+            'max_filesize': Config.MAX_FILE_SIZE, # Limit file size
         }
         if progress_hook:
             opts['progress_hooks'] = [progress_hook]

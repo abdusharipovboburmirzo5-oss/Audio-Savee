@@ -2,15 +2,23 @@
 
 Do'stim, mablag'ingiz bo'lmasa ham botni ishga tushirib, pul ishlashni boshlashingiz mumkin. Quyida eng yaxshi 3 ta tekin variantni tayyorladim.
 
-## 1-Variant: Koyeb (Eng osoni)
-Koyeb sizga Docker orqali botni bepull ishlatish imkonini beradi.
+## 1-Variant: Hugging Face Spaces (Karta so'ramaydi!)
+Hugging Face - botni 24/7 bepul ishlatish uchun eng zo'r joy.
 
-1. [Koyeb.com](https://www.koyeb.com/) saytidan ro'yxatdan o'ting.
-2. **"Create Service"** tugmasini bosing.
-3. **GitHub**-ni ulang va bot kodingiz turgan repozitoriyani tanlang.
-4. **Build Strategy**: Docker-ni tanlang (u bizni `Dockerfile`-ni avtomatik taniydi).
-5. **Environment Variables** bo'limida `BOT_TOKEN` va boshqa kerakli kalitlarni kiriting.
-6. **Deploy** tugmasini bosing.
+1. [huggingface.co/new-space](https://huggingface.co/new-space) sahifasiga kiring.
+2. **Space Name**: Xohlagan nom yozing (masalan: `audio-save-bot`).
+3. **SDK**: **Docker**-ni tanlang.
+4. **License**: **Apache 2.0** deb tanlang.
+5. **Repository**: Pastroqda "Connect your GitHub" tugmasini bosing va o'zingizning GitHub repozitoriyangizni (`Audio-Savee`) tanlang.
+6. **Create Space** tugmasini bosing.
+7. **Sozlash**: Space yaratilgandan so'ng, "Settings" bo'limiga kiring.
+8. **Variables and secrets** bo'limida **"New secret"** tugmasini bosing:
+   - Name: `BOT_TOKEN`
+   - Value: (Bot tokeningizni yozing)
+9. Bot avtomatik ishga tushadi!
+
+## 2-Variant: Koyeb
+Koyeb ham yaxshi, lekin ba'zida karta so'rab qoladi.
 
 > [!WARNING]
 > Koyeb-ning tekin versiyasida fayllar saqlanib qolmaydi. Bot o'chib yonsa, bazadagi ma'lumotlar o'chib ketishi mumkin. Buning uchun pastdagi "Ma'lumotlar bazasi" bo'limini o'qing.
@@ -24,6 +32,39 @@ Google Cloud sizga boshida $300 bonus beradi (kartangiz bo'lishi shart, lekin pu
 
 ## 3-Variant: Oracle Cloud (Eng zo'ri)
 Agar karta topsangiz, Oracle **24GB RAM**-li serverni butunlay tekinga beradi. Bu bot uchun eng yaxshi "uy".
+
+---
+
+## 🔄 Health Check (Server Uyquga Ketmasligi Uchun)
+
+Bepul serverlar 10-15 daqiqa faoliyat bo'lmasa uyquga ketadi. Buning oldini olish uchun **tashqi ping servis** ishlatamiz.
+
+### UptimeRobot (Tavsiya qilinadi - 100% Tekin)
+
+1. [uptimerobot.com](https://uptimerobot.com) saytiga kiring va ro'yxatdan o'ting
+2. **"Add New Monitor"** tugmasini bosing
+3. Quyidagi ma'lumotlarni kiriting:
+   - **Monitor Type**: HTTP(s)
+   - **Friendly Name**: Instagram Bot Health
+   - **URL**: Sizning bot URL-ingiz + `/health`
+     - Hugging Face: `https://your-username-audio-save-bot.hf.space/health`
+     - Render: `https://your-app-name.onrender.com/health`
+   - **Monitoring Interval**: 5 minutes (tekin rejada)
+4. **Create Monitor** tugmasini bosing
+
+✅ Endi server har 5 daqiqada ping oladi va uyquga ketmaydi!
+
+### Boshqa Variantlar
+
+- **cron-job.org** - Har 1 daqiqada ping yuborish mumkin
+- **Koyeb** - O'zida health check bor (sozlash shart emas)
+
+### Health Check Endpoint-lar
+
+Botingizda 3 ta endpoint mavjud:
+- `/` - Bot holati va uptime
+- `/health` - Monitoring uchun
+- `/ping` - Oddiy ping
 
 ---
 

@@ -64,11 +64,13 @@ brew install ffmpeg
 
 ### 3. Configure Bot Token
 
-The `.env` file is already configured with your bot token:
+The `.env` file should be configured with your bot token:
 ```
-BOT_TOKEN=7637789321:AAHp_NpaqCJnlmVmXPh0OtioJme8wDhJ5ZA
-ADMIN_CHAT_ID=5657790788
+BOT_TOKEN=your_bot_token_here
+ADMIN_CHAT_ID=your_telegram_user_id
 ```
+
+> ⚠️ **HECH QACHON haqiqiy tokenni GitHub yoki ommaviy joyga qo'ymang!**
 
 ## 🎯 Usage
 
