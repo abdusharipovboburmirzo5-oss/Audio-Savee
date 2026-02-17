@@ -37,8 +37,8 @@ class InstagramDownloader:
             'merge_output_format': 'mp4',
             'extractor_args': {
                 'youtube': {
-                    'skip': ['dash', 'hls', 'translated_subs'],
-                    'player_client': ['android', 'ios'], # Avoid 'web' which has Data Sync ID issues
+                    'skip': ['dash', 'hls', 'translated_subs', 'webpage'], # Skip webpage to avoid initial 429
+                    'player_client': ['web', 'android', 'ios'], # Re-enable web for cookie support
                 },
                 'tiktok': {'app_version': '20.2.1', 'manifest_app_version': '20.2.1'},
             },
@@ -53,6 +53,7 @@ class InstagramDownloader:
             'concurrent_fragment_downloads': 5,
             'external_downloader_args': {'ffmpeg': ['-loglevel', 'panic']},
             'check_formats': False, # Speed up info extraction
+            'force_ipv4': True, # Forces IPv4 which is often more stable on Render
             'max_filesize': Config.MAX_FILE_SIZE, # Limit file size
         }
         
